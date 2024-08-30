@@ -127,11 +127,18 @@ class MainWindow(QMainWindow):
         try:
             with open(filename, 'r') as file:
                 file.readline()
+                if filename == 'all_cards.json':
+                    data = items(file, 'item')
+                    processed_data = {}
+                        
+                    for item in data:
+                            key = (item["lang"], item["set"], item["collector_number"])
+                            processed_data[key] = item
+                    return processed_data
                 return load(file)
         except (FileNotFoundError, KeyError):
             QMessageBox.critical(self, "Error", filename + " file not found or corrupted.")
             return []
-        
     @classmethod
     def reload_sets(self):
         self.sets = self.load_local_file(self, 'sets.json')
@@ -161,7 +168,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         self.table = QTableWidget()
         self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
-        self.delegate = CustomDelegate(parent=self.table, undo_stack=self.undo_stack, editable_columns=self.editable_column_names, sets=self.sets, langs=self.langs)
+        self.delegate = CustomDelegate(all_cards=self.all_cards, parent=self.table, undo_stack=self.undo_stack, editable_columns=self.editable_column_names, sets=self.sets, langs=self.langs)
         self.table.setItemDelegate(self.delegate)
         self.add_button = QPushButton("Add Row")
         self.add_button.clicked.connect(self.add_row)
@@ -181,14 +188,9 @@ class MainWindow(QMainWindow):
         all_columns = set()
         for card in data:
             all_columns.update(card.keys())
-        show_color_identity = False
-        if 'color_identity' in all_columns:
-            for card in data:
-                if card.get('color_identity', '').count(',') > 1:
-                    show_color_identity = True
-                    break
         column_mapping = {
             "lang": "Language",
+            "release_date": "Release Date",
             "name": "Name",
             "type_line": "Type",
             "color_identity": "Color Identity",
@@ -213,8 +215,6 @@ class MainWindow(QMainWindow):
             "deck_quantity_four": "Deck Quantity 4"
         }
         columns = [col for col in column_mapping.keys() if col in all_columns]
-        if not show_color_identity and "color_identity" in columns:
-            columns.remove("color_identity")
         display_columns = [column_mapping[col] for col in columns]
         table.setColumnCount(len(display_columns))
         table.setHorizontalHeaderLabels(display_columns)

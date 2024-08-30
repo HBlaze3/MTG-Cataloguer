@@ -1,6 +1,6 @@
 from json import dump
-from os import remove
-from os.path import exists
+from os import remove, listdir
+from os.path import exists, join
 from gzip import GzipFile
 import zipfile
 from ijson import items
@@ -184,12 +184,15 @@ class Startup:
     
     @staticmethod
     def extract_zip(zip_File):
+        unzipped = "./"+zip_File[:-4]
         try:
             with zipfile.ZipFile(zip_File, 'r') as zip_ref:
-                zip_ref.extractall("./"+zip_File[:-4])
+                zip_ref.extractall(unzipped)
         finally:
             if exists(zip_File):
                 remove(zip_File)
+            if unzipped == './AllDeckFiles':
+                Startup.rewrite_json([join(unzipped, file) for file in listdir(unzipped)])
 
     @staticmethod
     def rewrite_json(file_paths):
@@ -215,9 +218,42 @@ class Startup:
             return e
     
     @staticmethod
+    def get_language_code(lang):
+        match lang:
+            case "English":
+                return "en"
+            case "Spanish":
+                return "es"
+            case "French":
+                return "fr"
+            case "German":
+                return "de"
+            case "Italian":
+                return "it"
+            case "Portuguese (Brazil)":
+                return "pt"
+            case "Japanese":
+                return "ja"
+            case "Korean":
+                return "ko"
+            case "Russian":
+                return "ru"
+            case "Chinese Simplified":
+                return "zhs"
+            case "Chinese Traditional":
+                return "zht"
+            case "Phyrexian":
+                return "ph"
+
+    @staticmethod
     def create_card_data_dict(card_info):
+        quantity = str(card_info['count'])
+        if card_info['isFoil'] == True:
+            quantity_foil = quantity
+        else:
+            quantity_foil = ""
         return {
-            "lang": card_info['language'],
+            "lang": Startup.get_language_code(card_info['language']),
             "release_date": "",
             "name": card_info['name'],
             "type_line": card_info['type'],
@@ -225,14 +261,14 @@ class Startup:
             "set_name": "",
             "set": card_info['setCode'],
             "collector_number": card_info['number'],
-            "quantity": card_info['count'],
-            "quantity_foil": card_info.get('quantity_foil', 0),
+            "quantity": quantity,
+            "quantity_foil": quantity_foil,
             "usd": "",
             "usd_foil": "",
             "total_usd": "",
             "total_usd_foil": "",
             "storage_areas": "N/A",
-            "storage_quantity": "",
+            "storage_quantity": quantity,
             "deck_type": "",
             "deck_quantity": "",
             "deck_type_two": "",

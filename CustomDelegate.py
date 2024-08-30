@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QItemDelegate, QLineEdit, QCompleter, QMessageBox
 from PyQt5.QtCore import Qt
 from EditCellCommand import EditCellCommand
-from get_value import get_value
+from sharedFunctions import get_value
 
 class CustomDelegate(QItemDelegate):
     def __init__(self, all_cards, parent=None, undo_stack=None, editable_columns=None, sets=None, langs=None):

@@ -1,8 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QLineEdit, QPushButton, QCheckBox, QDialogButtonBox, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import Qt, QSettings, QTimer
 from Startup import Startup
-from os.path import join
-from os import listdir
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -73,8 +71,6 @@ class SettingsDialog(QDialog):
         def perform_update():
             try:
                 Startup.startup_tasks(override)
-                directory = './AllDeckFiles'
-                Startup.rewrite_json([join(directory, file) for file in listdir(directory)])
             except Exception as e:
                 QMessageBox.critical(self, "Update Error", f"Failed to update sets: {str(e)}")
             finally:

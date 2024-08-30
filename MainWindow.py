@@ -12,12 +12,14 @@ from PyQt5.QtCore import QSettings, Qt
 from PyQt5.QtGui import QIcon
 from os.path import exists, basename, join
 from os import listdir
-from ijson import items
+from ijson import items, IncompleteJSONError
+from sharedFunctions import sort_json_data
 from StyleSheet import MENUSTYLE, PAD, BUTTONSTYLE, TITLESTYLE, THEMESTYLE
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.sort_json_data = sort_json_data
         self.settings = QSettings("HBlaze3", "MTG-Cataloguer")
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowTitle("JSON Viewer")
@@ -35,6 +37,33 @@ class MainWindow(QMainWindow):
         self.ADFFiles = [join(self.ADFDir, file) for file in listdir(self.ADFDir)]
         self.AllDeckFiles = self.load_local_AllDeckFiles()
         self.undo_stack = QUndoStack(self)
+
+        self.column_mapping = {
+            "lang": "Language",
+            "release_date": "Release Date",
+            "name": "Name",
+            "type_line": "Type",
+            "color_identity": "Color Identity",
+            "set_name": "Set Name",
+            "set": "Set",
+            "collector_number": "Collector Number",
+            "quantity": "Quantity",
+            "quantity_foil": "Quantity Foil",
+            "usd": "USD",
+            "usd_foil": "USD Foil",
+            "total_usd": "Total USD",
+            "total_usd_foil": "Total USD Foil",
+            "storage_areas": "Storage Areas",
+            "storage_quantity": "Storage Quantity",
+            "deck_type": "Deck Type",
+            "deck_quantity": "Deck Quantity",
+            "deck_type_two": "Deck Type 2",
+            "deck_quantity_two": "Deck Quantity 2",
+            "deck_type_three": "Deck Type 3",
+            "deck_quantity_three": "Deck Quantity 3",
+            "deck_type_four": "Deck Type 4",
+            "deck_quantity_four": "Deck Quantity 4"
+        }
 
         self.editable_column_names = {
             "Language": "lang",
@@ -116,7 +145,7 @@ class MainWindow(QMainWindow):
         self._resize_edge = None
         
     def add_precons_tab(self):
-        precons_tab = PreconsTab(self.DeckList)
+        precons_tab = PreconsTab(self, self.DeckList)
         tab_index = self.tab_widget.add_tab(precons_tab, "Precons", False)
         self.tab_widget.setCurrentIndex(tab_index)
 
@@ -144,9 +173,12 @@ class MainWindow(QMainWindow):
                             processed_data[key] = item
                     return processed_data
                 return load(file)
-        except (FileNotFoundError, KeyError):
+        except (FileNotFoundError, IncompleteJSONError, KeyError):
             QMessageBox.critical(self, "Error", filename + " file not found or corrupted.")
             return []
+    
+    def get_tab_count(self):
+        return self.tab_widget.count()
     @classmethod
     def reload_sets(self):
         self.sets = self.load_local_file(self, 'sets.json')
@@ -196,34 +228,9 @@ class MainWindow(QMainWindow):
         all_columns = set()
         for card in data:
             all_columns.update(card.keys())
-        column_mapping = {
-            "lang": "Language",
-            "release_date": "Release Date",
-            "name": "Name",
-            "type_line": "Type",
-            "color_identity": "Color Identity",
-            "set_name": "Set Name",
-            "set": "Set",
-            "collector_number": "Collector Number",
-            "quantity": "Quantity",
-            "quantity_foil": "Quantity Foil",
-            "usd": "USD",
-            "usd_foil": "USD Foil",
-            "total_usd": "Total USD",
-            "total_usd_foil": "Total USD Foil",
-            "storage_areas": "Storage Areas",
-            "storage_quantity": "Storage Quantity",
-            "deck_type": "Deck Type",
-            "deck_quantity": "Deck Quantity",
-            "deck_type_two": "Deck Type 2",
-            "deck_quantity_two": "Deck Quantity 2",
-            "deck_type_three": "Deck Type 3",
-            "deck_quantity_three": "Deck Quantity 3",
-            "deck_type_four": "Deck Type 4",
-            "deck_quantity_four": "Deck Quantity 4"
-        }
-        columns = [col for col in column_mapping.keys() if col in all_columns]
-        display_columns = [column_mapping[col] for col in columns]
+        
+        columns = [col for col in self.column_mapping.keys() if col in all_columns]
+        display_columns = [self.column_mapping[col] for col in columns]
         table.setColumnCount(len(display_columns))
         table.setHorizontalHeaderLabels(display_columns)
         table.setRowCount(len(data))
@@ -296,26 +303,36 @@ class MainWindow(QMainWindow):
 
     def save_changes(self):
         tab_index = self.tab_widget.currentIndex()
-        if tab_index == -1:
+        if tab_index <= 0:
             QMessageBox.warning(self, "No Tab Selected", "Please select a tab to save.")
             return
+        tab_title = self.tab_widget.tabText(tab_index)
 
         file_path, _ = QFileDialog.getSaveFileName(self, "Save JSON File", "", "JSON Files (*.json)")
         if file_path:
             data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
+            sorted_data = self.sort_json_data(data)
             with open(file_path, 'w') as file:
-                dump(data, file, indent=4)
+                dump(sorted_data, file)
+            self.tab_widget.close_tab(tab_title)
+            self.add_tab(file_path, sorted_data)
 
     def extract_data_from_table(self, table):
         columns = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
+        display_to_db_column = {v: k for k, v in self.column_mapping.items()}
+        
         data = []
         for row in range(table.rowCount()):
             row_data = {}
             for col, column in enumerate(columns):
                 item = table.item(row, col)
-                database_name = next((db_name for disp_name, db_name in self.editable_column_names.items() if disp_name == column), None)
-                row_data[database_name] = item.text() if item else ''
+                database_name = display_to_db_column.get(column)
+                if database_name:
+                    row_data[database_name] = item.text() if item else ''
+                else:
+                    row_data[column.lower()] = item.text() if item else ''
             data.append(row_data)
+        
         return data
 
     def undo(self):

@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QUndoCommand, QMessageBox
 from PyQt5.QtCore import Qt
 from itertools import zip_longest
 from typing import OrderedDict
-from get_value import get_value
+from sharedFunctions import get_value
 
 class EditCellCommand(QUndoCommand):
     def __init__(self, all_cards, table, row, column, old_value, new_value):

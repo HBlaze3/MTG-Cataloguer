@@ -49,7 +49,7 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
         
         self.load_settings()
-
+    
     def check_updates(self):
         if not self.settings.value("first_startup", True, type=bool):
             reply = QMessageBox.question(
@@ -64,7 +64,7 @@ class SettingsDialog(QDialog):
         
         wait_message = QMessageBox(self)
         wait_message.setWindowTitle("Please Wait")
-        wait_message.setText("Downloading updates, please wait...")
+        wait_message.setText("Downloading updates, please wait...\n*Program may seem frozen")
         wait_message.setStandardButtons(QMessageBox.NoButton)
         wait_message.setWindowModality(Qt.ApplicationModal)
 
@@ -83,14 +83,14 @@ class SettingsDialog(QDialog):
         QTimer.singleShot(100, perform_update)
 
     def load_settings(self):
-        self.settings = QSettings("MyCompany", "MyApp")
+        self.settings = QSettings("HBlaze3", "MTG-Cataloguer")
         self.dark_mode_checkbox.setChecked(self.settings.value("theme", True, type=bool))
         for label, default in self.default_paths.items():
             path = self.settings.value(f"paths/{label}", default)
             self.path_fields[label].setText(path)
 
     def save_settings(self):
-        self.settings = QSettings("MyCompany", "MyApp")
+        self.settings = QSettings("HBlaze3", "MTG-Cataloguer")
         self.settings.setValue("theme", self.dark_mode_checkbox.isChecked())
         for label, line_edit in self.path_fields.items():
             path = line_edit.text()
@@ -102,7 +102,7 @@ class SettingsDialog(QDialog):
             self.path_fields[label].setText(file_path)
 
     def reset_to_default(self):
-        self.settings = QSettings("MyCompany", "MyApp")
+        self.settings = QSettings("HBlaze3", "MTG-Cataloguer")
         for label, default in self.default_paths.items():
             self.path_fields[label].setText(default)
         self.dark_mode_checkbox.setChecked(True)

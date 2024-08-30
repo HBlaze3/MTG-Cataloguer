@@ -17,13 +17,14 @@ from StyleSheet import MENUSTYLE, PAD, BUTTONSTYLE, TITLESTYLE, THEMESTYLE
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.settings = QSettings("MyCompany", "MyApp")
+        self.settings = QSettings("HBlaze3", "MTG-Cataloguer")
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowTitle("JSON Viewer")
         self.setGeometry(100, 100, 800, 600)
         
         if self.settings.value("first_startup", True, type=bool):
-            SettingsDialog.check_updates()
+            settings_dialog = SettingsDialog(self)
+            settings_dialog.check_updates()
             self.settings.setValue("first_startup", False)
         self.langs = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'ru', 'zhs', 'zht', 'ph']
         self.sets = self.load_local_file('sets.json')
@@ -219,7 +220,6 @@ class MainWindow(QMainWindow):
         table.setColumnCount(len(display_columns))
         table.setHorizontalHeaderLabels(display_columns)
         table.setRowCount(len(data))
-        table.verticalHeader().setHidden(True)
 
         for row, card in enumerate(data):
             for col, column in enumerate(columns):
@@ -327,19 +327,19 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def save_settings(self):
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("HBlaze3", "MTG-Cataloguer")
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
-        settings.setValue("theme", QSettings("MyCompany", "MyApp").value("theme", True, type=bool))
+        settings.setValue("theme", QSettings("HBlaze3", "MTG-Cataloguer").value("theme", True, type=bool))
 
     def load_settings(self):
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("HBlaze3", "MTG-Cataloguer")
         self.restoreGeometry(settings.value("geometry", b""))
         self.restoreState(settings.value("windowState", b""))
         self.apply_theme(settings.value("theme", True, type=bool))
 
     def toggle_theme(self):
-        dark_mode = QSettings("MyCompany", "MyApp").value("theme", True, type=bool)
+        dark_mode = QSettings("HBlaze3", "MTG-Cataloguer").value("theme", True, type=bool)
         self.apply_theme(dark_mode)
 
     def apply_theme(self, dark_mode):

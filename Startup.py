@@ -124,7 +124,7 @@ class Startup:
                                     "release_date": card.get("released_at"),
                                     "name": card.get("name"),
                                     "type_line": card.get("type_line"),
-                                    "color_identity": card.get("color_identity"),
+                                    "color_identity": ",".join(card.get("color_identity")),
                                     "set_name": card.get("set_name"),
                                     "set": card.get("set"),
                                     "collector_number": card.get("collector_number"),

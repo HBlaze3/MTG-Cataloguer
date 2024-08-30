@@ -3,6 +3,7 @@ from AddRowCommand import AddRowCommand
 from CustomDelegate import CustomDelegate
 from DeleteRowCommand import DeleteRowCommand
 from PathSelectionDialog import PathSelectionDialog
+from PreconsTab import PreconsTab
 from SettingsDialog import SettingsDialog
 from TabWidget import TabWidget
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, 
@@ -107,12 +108,18 @@ class MainWindow(QMainWindow):
         central_widget = QWidget(self)
         central_widget.setLayout(central_layout)
         self.setCentralWidget(central_widget)
+        self.add_precons_tab()
         self.load_settings()
         self._drag_start_pos = None
         self._drag_start_geometry = None
         self._is_resizing = False
         self._resize_edge = None
-    
+        
+    def add_precons_tab(self):
+        precons_tab = PreconsTab(self.DeckList)
+        tab_index = self.tab_widget.add_tab(precons_tab, "Precons", False)
+        self.tab_widget.setCurrentIndex(tab_index)
+
     def load_local_AllDeckFiles(file_paths):
         results = {}
         try:
@@ -182,7 +189,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(button_layout)
         tab_content.setLayout(layout)
         self.populate_table(self.table, data)
-        tab_index = self.tab_widget.add_closable_tab(tab_content, tab_name)
+        tab_index = self.tab_widget.add_tab(tab_content, tab_name)
         self.tab_widget.setCurrentIndex(tab_index)
 
     def populate_table(self, table, data):

@@ -6,7 +6,7 @@ class TabWidget(QTabWidget):
     def __init__(self):
         super().__init__()
 
-    def add_closable_tab(self, widget, title):
+    def add_tab(self, widget, title, closable=True):
         tab_index = self.addTab(widget, title)
         self.setTabIcon(tab_index, QIcon())
         close_button = QPushButton('x')
@@ -16,7 +16,10 @@ class TabWidget(QTabWidget):
         tab_layout = QHBoxLayout()
         tab_layout.setContentsMargins(5, 0, 5, 0)
         tab_layout.addWidget(QLabel(title))
-        tab_layout.addWidget(close_button)
+        if not closable:
+            close_button = None
+        else:
+            tab_layout.addWidget(close_button)
         tab_widget = QWidget()
         tab_widget.setLayout(tab_layout)
         self.tabBar().setTabButton(tab_index, QTabBar.RightSide, close_button)

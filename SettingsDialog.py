@@ -1,10 +1,14 @@
 from PyQt5.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QLineEdit, QPushButton, QCheckBox, QDialogButtonBox, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import Qt, QSettings, QTimer
 from Startup import Startup
+from json import load, dump
+from sharedFunctions import sort_json_data
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, all_cards=None):
         super().__init__(parent)
+        self.all_cards = all_cards
+        self.sort_json_data = sort_json_data
         self.setWindowTitle("Settings")
         self.default_paths = {
             "Art": "./JSONs/A.json",
@@ -40,14 +44,34 @@ class SettingsDialog(QDialog):
         self.check_updates_button.clicked.connect(self.check_updates)
         self.reset_button = QPushButton("Reset to Default", self)
         self.reset_button.clicked.connect(self.reset_to_default)
+        self.sort_json_button = QPushButton("Update JSON Prices")
+        self.sort_json_button.clicked.connect(self.update_json_data)
         checkres_layout = QHBoxLayout()
         checkres_layout.addWidget(self.check_updates_button)
+        checkres_layout.addWidget(self.sort_json_button)
         checkres_layout.addWidget(self.reset_button)
         layout.addRow(checkres_layout)
         self.setLayout(layout)
-        
         self.load_settings()
     
+    def update_json_data(self):
+        try:
+            for label in self.default_paths.keys():
+                if label == "Art":
+                    continue
+                path = self.settings.value(f"paths/{label}")
+                
+                if path:
+                    with open(path, 'r') as read_f:
+                        data = load(read_f)
+                        sorted_data = self.sort_json_data(data, self.all_cards)
+                    with open(path, 'w') as write_f:
+                        dump(sorted_data, write_f)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to sort JSON data: {str(e)}")
+        finally:
+            QMessageBox.information(self, "Success", "JSON data sorted and saved successfully.")
+
     def check_updates(self):
         if not self.settings.value("first_startup", True, type=bool):
             reply = QMessageBox.question(

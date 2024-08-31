@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save JSON File", "", "JSON Files (*.json)")
         if file_path:
             data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
-            sorted_data = self.sort_json_data(data)
+            sorted_data = self.sort_json_data(data, self.all_cards)
             with open(file_path, 'w') as file:
                 dump(sorted_data, file)
             self.tab_widget.close_tab(tab_title)
@@ -342,7 +342,7 @@ class MainWindow(QMainWindow):
         self.undo_stack.redo()
 
     def open_settings_dialog(self):
-        dialog = SettingsDialog(self)
+        dialog = SettingsDialog(self, self.all_cards)
         if dialog.exec_():
             self.toggle_theme()
 

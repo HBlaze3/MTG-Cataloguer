@@ -57,14 +57,15 @@ class SettingsDialog(QDialog):
     def update_json_data(self):
         try:
             for label in self.default_paths.keys():
-                if label == "Art":
-                    continue
                 path = self.settings.value(f"paths/{label}")
                 
                 if path:
                     with open(path, 'r') as read_f:
                         data = load(read_f)
-                        sorted_data = self.sort_json_data(data, self.all_cards)
+                        if label == "Art":
+                            sorted_data = self.sort_json_data(data)
+                        else:
+                            sorted_data = self.sort_json_data(data, self.all_cards)
                     with open(path, 'w') as write_f:
                         dump(sorted_data, write_f)
         except Exception as e:

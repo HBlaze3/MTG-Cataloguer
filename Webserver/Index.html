@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Interface</title>
+  <link rel="stylesheet" href="index.css">
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+</head>
+<body>
+  <button id="darkModeToggle">Toggle Dark Mode</button>
+  <button id="clearLocalStorage">Clear Stored JSON Data</button>
+  <div class="tab">
+    <button class="tablinks" data-value='["MAIN", "0"]'>White</button>
+    <button class="tablinks" data-value='["MAIN", "1"]'>Blue</button>
+    <button class="tablinks" data-value='["MAIN", "2"]'>Black</button>
+    <button class="tablinks" data-value='["MAIN", "3"]'>Red</button>
+    <button class="tablinks" data-value='["MAIN", "4"]'>Green</button>
+    <button class="tablinks" data-value='["MAIN", "5"]'>Colorless</button>
+    <button class="tablinks" data-value='["SECONDARY", "0"]'>Multicolored</button>
+    <button class="tablinks" data-value='["SECONDARY", "1"]'>Tokens</button>
+    <button class="tablinks" data-value='["TERTIARY", "0"]'>Art Series</button>
+  </div>
+  <div class="wrapper">
+    <div class="profile">
+      <table id="carddata">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="tableloader.js" defer></script>
+</body>
+</html>

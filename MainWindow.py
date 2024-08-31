@@ -201,9 +201,8 @@ class MainWindow(QMainWindow):
             self.showMaximized()
             self.fullscreen_button.setText("🗖")
 
-    def add_tab(self, file_path, data):
-        tab_name = file_path.split('/')[-1].replace('.json', '')
-
+    def add_tab(self, tab_name, data):
+        tab_name = tab_name.split('/')[-1]
         tab_content = QWidget()
         layout = QVBoxLayout()
         self.table = QTableWidget()
@@ -279,7 +278,7 @@ class MainWindow(QMainWindow):
                 try:
                     with open(file_path, 'r') as file:
                         data = load(file)
-                        self.add_tab(file_path, data)
+                        self.add_tab(key, data)
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Failed to load JSON file: {str(e)}")
 
@@ -307,15 +306,24 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "No Tab Selected", "Please select a tab to save.")
             return
         tab_title = self.tab_widget.tabText(tab_index)
-
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save JSON File", "", "JSON Files (*.json)")
-        if file_path:
-            data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
+        settings = QSettings("HBlaze3", "MTG-Cataloguer")
+        file_path = settings.value(f"paths/{tab_title}")
+        if not file_path:
+            QMessageBox.warning(self, "File Path Not Found", f"No saved file path for tab: {tab_title}")
+            return
+        data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
+        if tab_title == "Art":
+            sorted_data = self.sort_json_data(data)
+        else:
             sorted_data = self.sort_json_data(data, self.all_cards)
+        try:
             with open(file_path, 'w') as file:
                 dump(sorted_data, file)
-            self.tab_widget.close_tab(tab_title)
-            self.add_tab(file_path, sorted_data)
+            QMessageBox.information(self, "Success", f"Changes saved successfully to {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"Failed to save JSON file: {str(e)}")
+        self.tab_widget.close_tab(tab_title)
+        self.add_tab(tab_title, sorted_data)
 
     def extract_data_from_table(self, table):
         columns = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]

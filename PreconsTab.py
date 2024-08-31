@@ -30,9 +30,9 @@ class PreconsTab(QWidget):
         try:
             deck_names = []
             deck_files = []
-            for deck in file_data['data']:
-                deck_names.append(f"{deck['name']} {deck['code']}")
-                deck_files.append(f"{deck['fileName']}.json")
+            for deck in file_data:
+                deck_names.append(deck['name'])
+                deck_files.append(deck['fileName'])
             return deck_names, deck_files
         except Exception as e:
             return [], []

@@ -1,4 +1,4 @@
-from json import dump
+from json import load, dump
 from os import remove, listdir
 from os.path import exists, join
 from gzip import GzipFile
@@ -96,91 +96,117 @@ class Startup:
             return None
 
     @staticmethod
+    def save_file(file_path, data, mode='wb'):
+        with open(file_path, mode) as file:
+            file.write(data)
+    
+    @staticmethod
+    def write_metadata(file_path, metadata, mode='r+'):
+        with open(file_path, mode, encoding='utf-8') as meta_file:
+            meta_file.write(f"{metadata}\n")
+
+    @staticmethod
     def download_file(url, save_as, override, step=None):
+        def fetch_response():
+            response = get(url[0] if save_as == "all_cards.json" else url, stream=True)
+            response.raise_for_status()
+            return response
+        
         try:
-            if save_as == "all_cards.json":
-                def download_all_cards():
-                    with get(url[0], stream=True) as all_cards_response:
-                        all_cards_response.raise_for_status()
+            response = fetch_response()
+            last_modified = response.headers.get('Last-Modified')
 
-                        if 'Content-Encoding' in all_cards_response.headers and all_cards_response.headers['Content-Encoding'] == 'gzip':
-                            gzip_file = GzipFile(fileobj=all_cards_response.raw)
-                        else:
-                            content = all_cards_response.raw.read(2)
-                            if content == b'\x1f\x8b':
-                                all_cards_response.raw.seek(0)
-                                gzip_file = GzipFile(fileobj=all_cards_response.raw)
-                            else:
-                                all_cards_response.raw.seek(0)
-                                gzip_file = all_cards_response.raw
-                        with open(save_as, 'w', encoding='utf-8') as output_file:
-                            output_file.write(f"{url[1]}\n")
-                            output_file.write('[\n')
-                            first = True
-
-                            for card in items(gzip_file, 'item'):
-                                processed_card = {
-                                    "lang": card.get("lang"),
-                                    "release_date": card.get("released_at"),
-                                    "name": card.get("name"),
-                                    "type_line": card.get("type_line"),
-                                    "color_identity": ",".join(card.get("color_identity")),
-                                    "set_name": card.get("set_name"),
-                                    "set": card.get("set"),
-                                    "collector_number": card.get("collector_number"),
-                                    "usd": card.get("prices", {}).get("usd"),
-                                    "usd_foil": card.get("prices", {}).get("usd_foil"),
-                                }
-
-                                if not first:
-                                    output_file.write(',\n')
-                                first = False
-                                dump(processed_card, output_file, ensure_ascii=False)
-
-                            output_file.write('\n]')
-                    from MainWindow import MainWindow
-                    MainWindow.reload_all_cards()
-
-                if override:
-                    download_all_cards()
-                elif exists(save_as):
-                    if Startup.date_check(save_as, url[1]):
-                        download_all_cards()
+            def download_and_save():
+                if save_as == "all_cards.json":
+                    Startup.process_all_cards(response, save_as, url[1])
                 else:
-                    download_all_cards()
-            else:
-                response = get(url, stream=True)
-                response.raise_for_status()
-                last_modified = response.headers.get('Last-Modified')
+                    Startup.process_other_files(response, save_as, last_modified)
 
-                def save_other_files():
-                    if not ".zip" in save_as:
-                        with open(save_as, 'wb') as file:
-                            file.write(f"{last_modified}\n".encode('utf-8'))
-                            for chunk in response.iter_content(chunk_size=4096):
-                                if chunk:
-                                    file.write(chunk)
-                        from MainWindow import MainWindow
-                        MainWindow.reload_DeckList()
-                    else:
-                        with open(save_as[:-4] + ".meta", 'wb') as file:
-                            file.write(f"{last_modified}\n".encode('utf-8'))
-                        with open(save_as, 'wb') as file:
-                            for chunk in response.iter_content(chunk_size=4096):
-                                if chunk:
-                                    file.write(chunk)
-                        Startup.extract_zip(save_as)
-
-                if override:
-                    save_other_files()
-                elif exists(save_as):
-                    if Startup.date_check(save_as, last_modified):
-                        save_other_files()
-                else:
-                    save_other_files()
+            if override or not exists(save_as) or Startup.date_check(save_as, url[1] if save_as == "all_cards.json" else last_modified):
+                download_and_save()
 
         except Exception as e:
-            pass
+            print(f"Error downloading {save_as}: {e}")
+
+    @staticmethod
+    def process_all_cards(response, save_as, date):
+        with Startup.get_gzip_file(response) as gzip_file:
+            Startup.write_metadata(save_as, date, 'w')
+            with open(save_as, 'r+', encoding='utf-8') as file:
+                file.readline()
+                file.write('[\n')
+                first = True
+
+                for card in items(gzip_file, 'item'):
+                    processed_card = Startup.create_processed_card(card)
+                    if not first:
+                        file.write(',\n')
+                    first = False
+                    dump(processed_card, file)
+
+                file.write('\n]')
+        from MainWindow import MainWindow
+        MainWindow.reload_all_cards()
+
+    @staticmethod
+    def get_gzip_file(response):
+        if 'Content-Encoding' in response.headers and response.headers['Content-Encoding'] == 'gzip':
+            return GzipFile(fileobj=response.raw)
+        content = response.raw.read(2)
+        response.raw.seek(0)
+        if content == b'\x1f\x8b':
+            return GzipFile(fileobj=response.raw)
+        return response.raw
+
+    @staticmethod
+    def process_other_files(response, save_as, last_modified):
+        if ".zip" in save_as:
+            Startup.write_metadata(save_as[:-4] + ".meta", last_modified)
+            Startup.save_file(save_as, response.raw.read())
+            Startup.extract_zip(save_as)
+        else:
+            if Startup.get_gzip_file(response):
+                with Startup.get_gzip_file(response) as gzip_file:
+                    Startup.save_file(save_as, gzip_file.read(), mode='wb')
+            else:
+                Startup.save_file(save_as, response.raw.read())
+            if save_as == "DeckList.json":
+                Startup.process_deck_list(save_as, last_modified)
+            else:
+                Startup.write_metadata(save_as, last_modified)
+
+    @staticmethod
+    def process_deck_list(save_as, last_modified):
+        deck_data = []
+        with open(save_as, 'r+', encoding='utf-8') as f:
+            data = load(f)
+            for deck in data['data']:
+                deck_info = {
+                    "name": f"{deck['name']} {deck['code']}",
+                    "fileName": f"{deck['fileName']}.json"
+                }
+                deck_data.append(deck_info)
+            f.seek(0)
+            f.write(f"{last_modified}\n")
+            dump(deck_data, f)
+            f.truncate()
+        from MainWindow import MainWindow
+        MainWindow.reload_DeckList()
+
+    @staticmethod
+    def create_processed_card(card):
+        return {
+            "lang": card.get("lang"),
+            "release_date": card.get("released_at"),
+            "name": card.get("name"),
+            "type_line": card.get("type_line"),
+            "color_identity": ",".join(card.get("color_identity", [])),
+            "set_name": card.get("set_name"),
+            "set": card.get("set"),
+            "collector_number": card.get("collector_number"),
+            "usd": card.get("prices", {}).get("usd"),
+            "usd_foil": card.get("prices", {}).get("usd_foil"),
+        }
     
     @staticmethod
     def extract_zip(zip_File):

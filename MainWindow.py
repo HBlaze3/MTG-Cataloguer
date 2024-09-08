@@ -1,3 +1,4 @@
+from csv import writer
 from json import dump, load
 from AddRowCommand import AddRowCommand
 from CustomDelegate import CustomDelegate
@@ -7,7 +8,7 @@ from PreconsTab import PreconsTab
 from SettingsDialog import SettingsDialog
 from TabWidget import TabWidget
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, 
-                             QMenuBar, QAction, QLabel, QHBoxLayout, QAbstractItemView, QMessageBox, QUndoStack)
+                             QMenuBar, QAction, QLabel, QHBoxLayout, QAbstractItemView, QMessageBox, QUndoStack, QInputDialog)
 from PyQt5.QtCore import QSettings, Qt
 from PyQt5.QtGui import QIcon
 from os.path import exists, basename, join
@@ -35,7 +36,7 @@ class MainWindow(QMainWindow):
         self.DeckList = self.load_local_file('DeckList.json')
         self.ADFDir = "./AllDeckFiles"
         self.ADFFiles = [join(self.ADFDir, file) for file in listdir(self.ADFDir)]
-        self.AllDeckFiles = self.load_local_AllDeckFiles()
+        self.AllDeckFiles = self.load_local_AllDeckFiles(self.ADFFiles)
         self.undo_stack = QUndoStack(self)
 
         self.column_mapping = {
@@ -118,6 +119,9 @@ class MainWindow(QMainWindow):
         self.save_action = QAction("Save Changes", self)
         self.save_action.triggered.connect(self.save_changes)
         self.file_menu.addAction(self.save_action)
+        self.file_convert = QAction("Convert File", self)
+        self.file_convert.triggered.connect(self.file_conversion)
+        self.file_menu.addAction(self.file_convert)
         self.settings_action = QAction("Settings", self)
         self.settings_action.triggered.connect(self.open_settings_dialog)
         self.menu_bar.addAction(self.settings_action)
@@ -149,7 +153,7 @@ class MainWindow(QMainWindow):
         tab_index = self.tab_widget.add_tab(precons_tab, "Precons", False)
         self.tab_widget.setCurrentIndex(tab_index)
 
-    def load_local_AllDeckFiles(file_paths):
+    def load_local_AllDeckFiles(self, file_paths):
         results = {}
         try:
             for file_path in file_paths:
@@ -300,22 +304,28 @@ class MainWindow(QMainWindow):
         else:
             return "cancel"
 
-    def save_changes(self):
+    def get_tab_changes(self):
         tab_index = self.tab_widget.currentIndex()
         if tab_index <= 0:
             QMessageBox.warning(self, "No Tab Selected", "Please select a tab to save.")
-            return
+            return False
         tab_title = self.tab_widget.tabText(tab_index)
         settings = QSettings("HBlaze3", "MTG-Cataloguer")
         file_path = settings.value(f"paths/{tab_title}")
         if not file_path:
             QMessageBox.warning(self, "File Path Not Found", f"No saved file path for tab: {tab_title}")
-            return
+            return False
         data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
         if tab_title == "Art":
             sorted_data = self.sort_json_data(data)
         else:
             sorted_data = self.sort_json_data(data, self.all_cards)
+        return tab_title, file_path, sorted_data
+
+    def save_changes(self):
+        tab_title, file_path, sorted_data = self.get_tab_changes()
+        if not tab_title:
+            return
         try:
             with open(file_path, 'w') as file:
                 dump(sorted_data, file)
@@ -325,6 +335,54 @@ class MainWindow(QMainWindow):
         self.tab_widget.close_tab(tab_title)
         self.add_tab(tab_title, sorted_data)
 
+    def file_conversion(self):
+        platforms = ["Moxfield", "Archidekt", "CardSphere", "DeckBox", "Decked Builder", "DeckStats", 
+                    "Helvault", "ManaBox", "TappedOut", "DragonShield", "TopDecked", "MTGGoldfish", 
+                    "CardKingdom", "TCGPlayer"]
+        platform, ok = QInputDialog.getItem(self, "Select Platform", "Choose platform to export deck to:", platforms, 0, False)
+        if not ok:
+            return
+        tab_title, _, sorted_data = self.get_tab_changes()
+        if not tab_title:
+            return
+        platform_headers = {
+            "Moxfield": ["Quantity", "Name", "Set", "Collector Number"],
+            "Archidekt": ["Name", "Quantity", "Set", "Collector Number"],
+            "CardSphere": ["Quantity", "Name", "Set", "USD", "Quantity Foil", "USD Foil"],
+            "DeckBox": ["Quantity", "Name", "Set", "Collector Number", "Storage Areas"],
+            "Decked Builder": ["Name", "Quantity", "Set", "Collector Number", "USD", "Quantity Foil", "Total USD", "Total USD Foil"],
+            "DeckStats": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity"],
+            "Helvault": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Deck Type 2", "Deck Quantity 2"],
+            "ManaBox": ["Quantity", "Name", "Set", "Collector Number", "Color Identity"],
+            "TappedOut": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity"],
+            "DragonShield": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Storage Areas"],
+            "TopDecked": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Storage Areas"],
+            "MTGGoldfish": ["Quantity", "Name", "Set", "Collector Number", "USD", "Total USD"],
+            "CardKingdom": ["Name", "Quantity", "Set", "Collector Number", "USD"],
+            "TCGPlayer": ["Name", "Quantity", "Set", "Collector Number", "USD", "USD Foil", "Total USD", "Total USD Foil"]
+        }
+        if platform not in platform_headers:
+            QMessageBox.critical(self, "Error", f"Export format for {platform} is not supported.")
+            return
+        headers = platform_headers[platform]
+        save_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
+        if not save_path:
+            return
+        try:
+            with open(save_path, mode='w', newline='', encoding='utf-8') as file:
+                csver = writer(file)
+                csver.writerow(headers)
+                
+                for row in sorted_data:
+                    row_data = []
+                    for header in headers:
+                        db_column = self.editable_column_names.get(header, header.lower())
+                        row_data.append(row.get(db_column, ""))
+                    csver.writerow(row_data)
+            QMessageBox.information(self, "Success", f"File successfully exported to {save_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save CSV: {str(e)}")
+    
     def extract_data_from_table(self, table):
         columns = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
         display_to_db_column = {v: k for k, v in self.column_mapping.items()}

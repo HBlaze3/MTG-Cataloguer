@@ -348,32 +348,75 @@ class MainWindow(QMainWindow):
             return
         _, _, sorted_data = tab_changes
         platform_headers = {
-            "Moxfield": ["Quantity", "Name", "Set", "Collector Number"],
-            "Archidekt": ["Name", "Quantity", "Set", "Collector Number"],
-            "CardSphere": ["Quantity", "Name", "Set", "USD", "Quantity Foil", "USD Foil"],
-            "DeckBox": ["Quantity", "Name", "Set", "Collector Number", "Storage Areas"],
-            "Decked Builder": ["Name", "Quantity", "Set", "Collector Number", "USD", "Quantity Foil", "Total USD", "Total USD Foil"],
-            "DeckStats": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity"],
-            "Helvault": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Deck Type 2", "Deck Quantity 2"],
-            "ManaBox": ["Quantity", "Name", "Set", "Collector Number", "Color Identity"],
-            "TappedOut": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity"],
-            "DragonShield": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Storage Areas"],
-            "TopDecked": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Storage Areas"],
-            "MTGGoldfish": ["Quantity", "Name", "Set", "Collector Number", "USD", "Total USD"],
-            "CardKingdom": ["Name", "Quantity", "Set", "Collector Number", "USD"],
-            "TCGPlayer": ["Name", "Quantity", "Set", "Collector Number", "USD", "USD Foil", "Total USD", "Total USD Foil"]
+            "Moxfield": {
+                "file_headers": ["Count", "Name", "Edition", "Collector Number"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number"]
+            },
+            "Archidekt": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number"]
+            },
+            "CardSphere": {
+                "file_headers": ["Quantity", "Name", "Set", "USD", "Quantity Foil", "USD Foil"], 
+                "headers": ["Quantity", "Name", "Set", "USD", "Quantity Foil", "USD Foil"]
+            },
+            "DeckBox": {
+                "file_headers": ["Quantity", "Name", "Set", "Collector Number", "Storage Areas"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number", "Storage Areas"]
+            },
+            "Decked Builder": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "USD", "Quantity Foil", "Total USD", "Total USD Foil"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "USD", "Quantity Foil", "Total USD", "Total USD Foil"]
+            },
+            "DeckStats": {
+                "file_headers": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity"]
+            },
+            "Helvault": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Deck Type 2", "Deck Quantity 2"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Deck Type 2", "Deck Quantity 2"]
+            },
+            "ManaBox": {
+                "file_headers": ["Quantity", "Name", "Set", "Collector Number", "Color Identity"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number", "Color Identity"]
+            },
+            "TappedOut": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Deck Quantity"]
+            },
+            "DragonShield": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Storage Areas"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "Deck Type", "Storage Areas"]
+            },
+            "TopDecked": {
+                "file_headers": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Storage Areas"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number", "Deck Type", "Deck Quantity", "Storage Areas"]
+            },
+            "MTGGoldfish": {
+                "file_headers": ["Quantity", "Name", "Set", "Collector Number", "USD", "Total USD"], 
+                "headers": ["Quantity", "Name", "Set", "Collector Number", "USD", "Total USD"]
+            },
+            "CardKingdom": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "USD"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "USD"]
+            },
+            "TCGPlayer": {
+                "file_headers": ["Name", "Quantity", "Set", "Collector Number", "USD", "USD Foil", "Total USD", "Total USD Foil"], 
+                "headers": ["Name", "Quantity", "Set", "Collector Number", "USD", "USD Foil", "Total USD", "Total USD Foil"]
+            }
         }
         if platform not in platform_headers:
             QMessageBox.critical(self, "Error", f"Export format for {platform} is not supported.")
             return
-        headers = platform_headers[platform]
+        file_headers = platform_headers[platform]["file_headers"]
+        headers = platform_headers[platform]["headers"]
         save_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
         if not save_path:
             return
         try:
             with open(save_path, mode='w', newline='', encoding='utf-8') as file:
                 csver = writer(file)
-                csver.writerow(headers)
+                csver.writerow(file_headers)
                 
                 for row in sorted_data:
                     row_data = []

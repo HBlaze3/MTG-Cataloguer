@@ -308,13 +308,13 @@ class MainWindow(QMainWindow):
         tab_index = self.tab_widget.currentIndex()
         if tab_index <= 0:
             QMessageBox.warning(self, "No Tab Selected", "Please select a tab to save.")
-            return False
+            return
         tab_title = self.tab_widget.tabText(tab_index)
         settings = QSettings("HBlaze3", "MTG-Cataloguer")
         file_path = settings.value(f"paths/{tab_title}")
         if not file_path:
             QMessageBox.warning(self, "File Path Not Found", f"No saved file path for tab: {tab_title}")
-            return False
+            return
         data = self.extract_data_from_table(self.tab_widget.widget(tab_index).findChild(QTableWidget))
         if tab_title == "Art":
             sorted_data = self.sort_json_data(data)
@@ -323,9 +323,10 @@ class MainWindow(QMainWindow):
         return tab_title, file_path, sorted_data
 
     def save_changes(self):
-        tab_title, file_path, sorted_data = self.get_tab_changes()
-        if not tab_title:
+        tab_changes = self.get_tab_changes()
+        if tab_changes is None:
             return
+        tab_title, file_path, sorted_data = tab_changes
         try:
             with open(file_path, 'w') as file:
                 dump(sorted_data, file)
@@ -342,9 +343,10 @@ class MainWindow(QMainWindow):
         platform, ok = QInputDialog.getItem(self, "Select Platform", "Choose platform to export deck to:", platforms, 0, False)
         if not ok:
             return
-        tab_title, _, sorted_data = self.get_tab_changes()
-        if not tab_title:
+        tab_changes = self.get_tab_changes()
+        if tab_changes is None:
             return
+        _, _, sorted_data = tab_changes
         platform_headers = {
             "Moxfield": ["Quantity", "Name", "Set", "Collector Number"],
             "Archidekt": ["Name", "Quantity", "Set", "Collector Number"],

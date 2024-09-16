@@ -194,6 +194,7 @@ class MainWindow(QMainWindow):
         self.DeckList = self.load_local_file(self, 'DeckList.json')
     @classmethod
     def reload_AllDeckFiles(self):
+        self.ADFDir = "./AllDeckFiles"
         self.ADFFiles = [join(self.ADFDir, file) for file in listdir(self.ADFDir)]
         self.AllDeckFiles = self.load_local_AllDeckFiles(self.ADFFiles)
 

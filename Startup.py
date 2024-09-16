@@ -49,6 +49,9 @@ class Startup:
         for task in tasks:
             task.wait()
 
+        precon_path = './AllDeckFiles'
+        Startup.rewrite_json([join(precon_path, file) for file in listdir(precon_path)])
+        
     @staticmethod
     def date_check(filename, recent_date):
         try:
@@ -210,19 +213,23 @@ class Startup:
     
     @staticmethod
     def extract_zip(zip_File):
-        unzipped = "./"+zip_File[:-4]
         try:
             with zipfile.ZipFile(zip_File, 'r') as zip_ref:
-                zip_ref.extractall(unzipped)
+                zip_ref.extractall("./"+zip_File[:-4])
         finally:
             if exists(zip_File):
                 remove(zip_File)
-            if unzipped == './AllDeckFiles':
-                Startup.rewrite_json([join(unzipped, file) for file in listdir(unzipped)])
 
     @staticmethod
     def rewrite_json(file_paths):
         try:
+            with open('all_cards.json', 'r', encoding='utf-8') as f:
+                f.readline()
+                all_cards_data = { 
+                    (card['lang'], card['set'], card['collector_number']): card["release_date"]
+                    for card in items(f, 'item')
+                }
+                
             for file_path in file_paths:
                 with open(file_path, 'r+', encoding='utf-8') as file:
                     data = items(file, 'data')
@@ -230,10 +237,10 @@ class Startup:
                     data = list(data)[0]
                     if data['commander']:
                         commander = data['commander'][0]
-                        card_data = Startup.create_card_data_dict(commander)
+                        card_data = Startup.create_card_data_dict(commander, all_cards_data)
                         deck.append(card_data)
                     for card in data['mainBoard']:
-                        card_data = Startup.create_card_data_dict(card)
+                        card_data = Startup.create_card_data_dict(card, all_cards_data)
                         deck.append(card_data)
                     file.seek(0)
                     dump(deck, file)
@@ -246,8 +253,6 @@ class Startup:
     @staticmethod
     def get_language_code(lang):
         match lang:
-            case "English":
-                return "en"
             case "Spanish":
                 return "es"
             case "French":
@@ -270,37 +275,42 @@ class Startup:
                 return "zht"
             case "Phyrexian":
                 return "ph"
+        return "en"
 
     @staticmethod
-    def create_card_data_dict(card_info):
-        quantity = str(card_info['count'])
-        if card_info['isFoil'] == True:
-            quantity_foil = quantity
-        else:
-            quantity_foil = ""
-        return {
-            "lang": Startup.get_language_code(card_info['language']),
-            "release_date": "",
-            "name": card_info['name'],
-            "type_line": card_info['type'],
-            "color_identity": ','.join(card_info['colorIdentity']),
-            "set_name": "",
-            "set": card_info['setCode'],
-            "collector_number": card_info['number'],
-            "quantity": quantity,
-            "quantity_foil": quantity_foil,
-            "usd": "",
-            "usd_foil": "",
-            "total_usd": "",
-            "total_usd_foil": "",
-            "storage_areas": "N/A",
-            "storage_quantity": quantity,
-            "deck_type": "",
-            "deck_quantity": "",
-            "deck_type_two": "",
-            "deck_quantity_two": "",
-            "deck_type_three": "",
-            "deck_quantity_three": "",
-            "deck_type_four": "",
-            "deck_quantity_four": ""
-        }
+    def create_card_data_dict(card_info, all_cards_data):
+        try:
+            quantity = str(card_info['count'])
+            quantity_foil = quantity if card_info.get('isFoil') else ""
+            lang = Startup.get_language_code(card_info['language'])
+            setCode = str(card_info['setCode']).lower()
+            card_key = (lang, setCode, card_info['number'])
+            release_date = all_cards_data.get(card_key)
+            return {
+                "lang": lang,
+                "release_date": release_date,
+                "name": card_info['name'],
+                "type_line": card_info['type'],
+                "color_identity": ','.join(card_info['colorIdentity']),
+                "set_name": "",
+                "set": setCode,
+                "collector_number": card_info['number'],
+                "quantity": quantity,
+                "quantity_foil": quantity_foil,
+                "usd": "",
+                "usd_foil": "",
+                "total_usd": "",
+                "total_usd_foil": "",
+                "storage_areas": "N/A",
+                "storage_quantity": quantity,
+                "deck_type": "",
+                "deck_quantity": "",
+                "deck_type_two": "",
+                "deck_quantity_two": "",
+                "deck_type_three": "",
+                "deck_quantity_three": "",
+                "deck_type_four": "",
+                "deck_quantity_four": ""
+            }
+        except Exception as e:
+            return {}
